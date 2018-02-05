@@ -18,7 +18,8 @@ public class QuizActivity extends AppCompatActivity {
     private static final String KEY_INDEX = "index";
     private static final int REQUEST_CODE_CHEAT = 0;
     private static final String QUESTION_ANSWERED_KEY = "question_answered";
-    private static final String CHEATER = "player_cheated";
+    private static final String IS_CHEATER = "player_cheated";
+    private static final String KEEP_SCORE = "keep_score";
 
     private Button mTrueButton;
     private Button mFalseButton;
@@ -39,9 +40,11 @@ public class QuizActivity extends AppCompatActivity {
     private boolean mIsCheater;
     private int correct = 0;
     private int incorrect=0;
+    private int hints = 0;
 
     private boolean[] mQuestionsAnswered = new boolean[mQuestionBank.length];
     private boolean[] mPlayerCheated = new boolean[mQuestionBank.length];
+    private int[] mKeepScore = new int[mQuestionBank.length];
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,7 +55,9 @@ public class QuizActivity extends AppCompatActivity {
         if(savedInstanceState != null){
             mCurrentIndex = savedInstanceState.getInt(KEY_INDEX,0);
             mQuestionsAnswered = savedInstanceState.getBooleanArray(QUESTION_ANSWERED_KEY);
-            mPlayerCheated = savedInstanceState.getBooleanArray(CHEATER);
+            mPlayerCheated = savedInstanceState.getBooleanArray(IS_CHEATER);
+            mKeepScore = savedInstanceState.getIntArray(KEEP_SCORE);
+            retrieveGrade();
         }
 
         mQuestionTextView = (TextView) findViewById(R.id.question_text_view);
@@ -154,7 +159,8 @@ public class QuizActivity extends AppCompatActivity {
         Log.i(TAG, "onSaveInstanceState called");
         saveInstanceState.putInt(KEY_INDEX,mCurrentIndex);
         saveInstanceState.putBooleanArray(QUESTION_ANSWERED_KEY,mQuestionsAnswered);
-        saveInstanceState.putBooleanArray(CHEATER,mPlayerCheated);
+        saveInstanceState.putBooleanArray(IS_CHEATER,mPlayerCheated);
+        saveInstanceState.putIntArray(KEEP_SCORE,mKeepScore);
     }
 
     @Override
@@ -173,6 +179,7 @@ public class QuizActivity extends AppCompatActivity {
         mFalseButton.setEnabled(!mQuestionsAnswered[mCurrentIndex]);
         mTrueButton.setEnabled(!mQuestionsAnswered[mCurrentIndex]);
         int question = mQuestionBank[mCurrentIndex].getTextResId();
+        checkGrade();
         mQuestionTextView.setText(question);
     }
 
@@ -180,21 +187,24 @@ public class QuizActivity extends AppCompatActivity {
         boolean answerIsTrue = mQuestionBank[mCurrentIndex].isAnswerTrue();
 
         int messageResId = 0;
+        if(mPlayerCheated[mCurrentIndex]== true){
+            mIsCheater = true;
+        }
 
         if(mIsCheater){
             messageResId = R.string.judgment_toast;
             Toast customToast = Toast.makeText(this,messageResId,Toast.LENGTH_SHORT);
             customToast.setGravity(Gravity.TOP,0,0);
             customToast.show();
+            storeGrade(3);
+            mPlayerCheated[mCurrentIndex] = true;
         }else{
             if (userPressedTrue == answerIsTrue){
                 messageResId = R.string.correct_toast;
-                correct = (correct +1);
-                checkGrade();
+                storeGrade(2);
             }else {
                 messageResId = R.string.incorrect_toast;
-                incorrect = (incorrect + 1);
-                checkGrade();
+                storeGrade(1);
             }
 
             Toast customToast = Toast.makeText(this,messageResId,Toast.LENGTH_SHORT);
@@ -208,12 +218,41 @@ public class QuizActivity extends AppCompatActivity {
     }
 
     private void checkGrade(){
-        if((correct + incorrect)== mQuestionBank.length){
+        if((correct + incorrect+ hints)== mQuestionBank.length){
             int grade = (correct*100)/mQuestionBank.length;
             String gradeDisplay = "Your total is"+grade;
             Toast gradeToast = Toast.makeText(this, gradeDisplay,Toast.LENGTH_LONG);
             gradeToast.setGravity(Gravity.TOP,0,500);
             gradeToast.show();
+        }
+    }
+    private void storeGrade(int storeCode){
+        if(storeCode == 3){
+            hints = (hints+1);
+            mKeepScore[mCurrentIndex]= 3;
+        }
+        if(storeCode == 2){
+            correct = (correct + 1);
+            mKeepScore[mCurrentIndex]= 2;
+        }
+        if(storeCode==1){
+            incorrect = (incorrect + 1);
+            mKeepScore[mCurrentIndex]=1;
+        }
+    }
+    private void retrieveGrade(){
+        for(int k = 0; k<mKeepScore.length;k++) {
+            if (mKeepScore[k] == 3) {
+                hints = +1;
+            }
+            if (mKeepScore[k] == 2) {
+                correct = +1;
+            }
+            if (mKeepScore[k] == 1) {
+                incorrect = +1;
+            }
+            if (mKeepScore[k] == 0) {
+            }
         }
     }
 }
